@@ -4,6 +4,8 @@ A drum sampler built with C++ and [JUCE](https://juce.com), shipping as VST3, AU
 
 **Status:** largely complete and functional. WAV is currently the supported sample format.
 
+![DrumHits screenshot](screenshot.png)
+
 ## Prerequisites
 
 - Git
