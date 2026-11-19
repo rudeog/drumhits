@@ -35,6 +35,12 @@ cmake --build build -j8
 
 Use `-DCMAKE_BUILD_TYPE=Release` for an optimized build. On Windows and with other multi-config generators, pass `--config Release` to `cmake --build` instead.
 
+With MSVC, Release builds statically link the C/C++ runtime (`/MT`) by default,
+so these binaries do not require the Visual C++ Redistributable. Debug and
+other configurations retain the dynamic runtime. This does not eliminate
+dependencies on Windows system DLLs. Reconfigure and rebuild existing outputs
+when changing runtime settings.
+
 Outputs are in `build/DrumHits_artefacts/<config>/`:
 
 - `Standalone/DrumHits.app` (macOS) or the standalone executable
@@ -42,6 +48,79 @@ Outputs are in `build/DrumHits_artefacts/<config>/`:
 - `AU/DrumHits.component` (macOS only)
 
 Plugins are not installed automatically. Copy the VST3 or AU to your plugin folder, or point your host at the build folder.
+
+### Windows local code signing
+
+For use on another Windows machine you control, you can sign the standalone
+executable and the executable inside the VST3 bundle with a self-signed
+certificate. This is opt-in; normal builds remain unsigned. The Windows SDK
+must be installed with Visual Studio (including `signtool.exe`).
+
+On the build machine, in PowerShell, create the certificate once:
+
+```powershell
+New-Item -ItemType Directory -Force build\signing
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\New-SigningCertificate.ps1 -CertificatePath .\build\signing\DrumHits.cer
+```
+
+The execution policy override applies only to this PowerShell process. Save the
+printed thumbprint. The non-exportable private key remains in the
+current Windows user's personal certificate store on this machine; keep that
+account secure. The `.cer` file contains only the public certificate and can be
+copied to the other machine. Do not generate a new certificate for every build:
+the other machine would need to trust each replacement. Losing the private key
+requires creating and trusting a new certificate.
+
+Configure and build with the same Windows account that created the certificate:
+
+```powershell
+cmake -S . -B build -DDRUMHITS_WINDOWS_SIGNING=ON -DDRUMHITS_SIGNING_CERT_SHA1=<thumbprint>
+cmake --build build --config Release --target DrumHits_Standalone DrumHits_VST3
+```
+
+Replace `<thumbprint>` with the 40-character value, without angle brackets.
+Signing runs after linking, so when enabling signing or changing signing
+settings in an existing build, use `--clean-first` on the build command to
+ensure both binaries are signed with the current settings.
+Signing failures fail the build. If the Windows SDK is installed in a
+nonstandard location, set `-DDRUMHITS_SIGNTOOL="C:\path\to\signtool.exe"`.
+By default no timestamp is added, so signatures expire with the certificate.
+An RFC 3161 timestamp server can optionally be configured with
+`-DDRUMHITS_TIMESTAMP_URL=https://your-timestamp-server`; it must be reachable
+at build time. Certificate trust and timestamp validation still depend on the
+destination machine.
+
+On the other machine, first verify the certificate's SHA-1 thumbprint through a
+separate trusted channel against the value printed on the build machine:
+
+```powershell
+certutil -dump .\DrumHits.cer
+```
+
+Only if it matches and you trust this signing key, import the public certificate
+into **Current User** > **Trusted Root Certification Authorities** and
+**Current User** > **Trusted Publishers** (run these in PowerShell):
+
+```powershell
+Import-Certificate -FilePath .\DrumHits.cer -CertStoreLocation Cert:\CurrentUser\Root
+Import-Certificate -FilePath .\DrumHits.cer -CertStoreLocation Cert:\CurrentUser\TrustedPublisher
+```
+
+Trusting a self-signed root grants trust to signatures from that key, not just
+this particular build. Never copy or share the private key; remove the
+certificate from both trust stores if the key is compromised or no longer
+needed. These imports affect only the current user.
+
+Copy the standalone executable or the **entire** `DrumHits.vst3` folder to the
+other machine. To check a signature there, right-click the executable (or the
+`.vst3` binary inside `Contents\<architecture>-win`) and inspect **Properties >
+Digital Signatures**, or run `Get-AuthenticodeSignature <path-to-binary>` and
+check for `Status : Valid`. A valid, locally trusted signature identifies the
+publisher and detects changes to the signed binary; it does not guarantee that
+Microsoft Defender, SmartScreen, or other security products will not warn or
+quarantine it. SmartScreen reputation is separate from local certificate
+trust. For public distribution, use a certificate from a recognized code
+signing authority and follow Microsoft's reputation guidance instead.
 
 ## Usage
 

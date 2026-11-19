@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.22)
 
 project(DrumHits VERSION 0.1.0 LANGUAGES C CXX)
 
+if(MSVC AND NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY
+        "$<IF:$<CONFIG:Release>,MultiThreaded,MultiThreaded$<$<CONFIG:Debug>:Debug>DLL>")
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -86,3 +91,44 @@ target_link_libraries(DrumHits
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
+
+option(DRUMHITS_WINDOWS_SIGNING "Sign Windows standalone and VST3 binaries" OFF)
+if(DRUMHITS_WINDOWS_SIGNING)
+    if(NOT WIN32)
+        message(FATAL_ERROR "DRUMHITS_WINDOWS_SIGNING requires a Windows build")
+    endif()
+
+    set(DRUMHITS_SIGNING_CERT_SHA1 "" CACHE STRING "SHA-1 thumbprint of the signing certificate in CurrentUser\\My")
+    set(DRUMHITS_TIMESTAMP_URL "" CACHE STRING "Optional RFC 3161 timestamp server URL")
+    string(LENGTH "${DRUMHITS_SIGNING_CERT_SHA1}" thumbprint_length)
+    if(NOT thumbprint_length EQUAL 40 OR NOT DRUMHITS_SIGNING_CERT_SHA1 MATCHES "^[0-9a-fA-F]+$")
+        message(FATAL_ERROR "DRUMHITS_SIGNING_CERT_SHA1 must be a 40-character hexadecimal certificate thumbprint")
+    endif()
+
+    set(sdk_bin_dirs "")
+    foreach(sdk_root "$ENV{WindowsSdkDir}" "$ENV{ProgramFiles\(x86\)}/Windows Kits/10")
+        if(sdk_root)
+            file(GLOB sdk_bins LIST_DIRECTORIES TRUE "${sdk_root}/bin/*/x64")
+            list(APPEND sdk_bin_dirs ${sdk_bins})
+        endif()
+    endforeach()
+    list(SORT sdk_bin_dirs COMPARE NATURAL ORDER DESCENDING)
+    find_program(DRUMHITS_SIGNTOOL NAMES signtool.exe HINTS ${sdk_bin_dirs}
+        DOC "Path to Windows SDK signtool.exe")
+    if(NOT DRUMHITS_SIGNTOOL)
+        message(FATAL_ERROR "signtool.exe not found; install the Windows SDK or set DRUMHITS_SIGNTOOL")
+    endif()
+
+    set(timestamp_args "")
+    if(DRUMHITS_TIMESTAMP_URL)
+        list(APPEND timestamp_args /tr "${DRUMHITS_TIMESTAMP_URL}" /td SHA256)
+    endif()
+    foreach(sign_target DrumHits_Standalone DrumHits_VST3)
+        add_custom_command(TARGET ${sign_target} POST_BUILD
+            COMMAND "${DRUMHITS_SIGNTOOL}" sign /fd SHA256 /s My
+                /sha1 "${DRUMHITS_SIGNING_CERT_SHA1}" ${timestamp_args}
+                "$<TARGET_FILE:${sign_target}>"
+            COMMENT "Signing ${sign_target}"
+            VERBATIM)
+    endforeach()
+endif()
