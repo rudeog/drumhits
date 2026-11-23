@@ -30,6 +30,35 @@ juce::File Preferences::getDefaultFile()
     return makeOptions().getDefaultFile();
 }
 
+namespace
+{
+juce::PropertiesFile::Options makeStateOptions()
+{
+    auto options = makeOptions();
+    options.applicationName = "DrumHits-State";
+    return options;
+}
+} // namespace
+
+juce::File Preferences::getLastDirectory()
+{
+    // A fresh PropertiesFile reads the latest contents from disk.
+    juce::PropertiesFile state (makeStateOptions());
+    const juce::File dir (state.getValue ("lastDirectory"));
+    return dir.isDirectory() ? dir : juce::File::getSpecialLocation (juce::File::userDocumentsDirectory);
+}
+
+void Preferences::setLastDirectory (const juce::File& fileOrDirectory)
+{
+    const auto dir = fileOrDirectory.isDirectory() ? fileOrDirectory : fileOrDirectory.getParentDirectory();
+    if (! dir.isDirectory())
+        return;
+
+    juce::PropertiesFile state (makeStateOptions());
+    state.setValue ("lastDirectory", dir.getFullPathName());
+    state.saveIfNeeded();
+}
+
 int Preferences::parseNoteName (const juce::String& name)
 {
     const auto t = name.trim();

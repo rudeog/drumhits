@@ -43,7 +43,6 @@ private:
     juce::Label defaultNotes;
     juce::Label defaultNotesInfo;
 
-    juce::File lastPatchDirectory;
     bool updating = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SettingsTab)

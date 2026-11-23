@@ -3,6 +3,7 @@
 
 #include <juce_audio_formats/juce_audio_formats.h>
 
+#include "PluginEditor.h"
 #include "PluginProcessor.h"
 
 using Catch::Approx;
@@ -11,6 +12,13 @@ struct DrumHitsProcessorTestAccess
 {
     static void applyRate (DrumHitsProcessor& processor) { processor.handleAsyncUpdate(); }
     static void maintenance (DrumHitsProcessor& processor) { processor.timerCallback(); }
+};
+
+struct DrumHitsEditorTestAccess
+{
+    static void update (DrumHitsEditor& editor) { editor.timerCallback(); }
+    static const juce::Label& activeCursors (const DrumHitsEditor& editor) { return editor.activeCursorsLabel; }
+    static const juce::TextButton& panic (const DrumHitsEditor& editor) { return editor.panicButton; }
 };
 
 namespace
@@ -29,6 +37,59 @@ juce::File makeTestWave (const juce::File& dir)
     REQUIRE (writer->writeFromAudioSampleBuffer (data, 0, 200));
     return file;
 }
+}
+
+TEST_CASE ("Editor shows the total active cursors next to panic")
+{
+    juce::ScopedJuceInitialiser_GUI gui;
+    DrumHitsProcessor processor;
+    juce::TemporaryFile tempDir (juce::File::getSpecialLocation (juce::File::tempDirectory)
+                                    .getChildFile ("drumhits_active_" + juce::String (juce::Random::getSystemRandom().nextInt64())));
+    const auto dir = tempDir.getFile();
+    REQUIRE (dir.createDirectory());
+    processor.prepareToPlay (48000.0, 64);
+    DrumHitsProcessorTestAccess::applyRate (processor);
+    auto& controller = processor.getController();
+    const auto loaded = controller.loadWave (makeTestWave (dir));
+    REQUIRE (loaded.status == drumhits::LoadWaveResult::Status::loaded);
+    const int slot = controller.addHit (0, loaded.waveId);
+    REQUIRE (slot >= 0);
+    auto drum = controller.getDrumProperties (0);
+    drum.note = 36;
+    controller.setDrumProperties (0, drum);
+
+    DrumHitsEditor editor (processor);
+    const auto& label = DrumHitsEditorTestAccess::activeCursors (editor);
+    REQUIRE_FALSE (label.isVisible());
+    REQUIRE (label.getRight() < DrumHitsEditorTestAccess::panic (editor).getX());
+
+    juce::AudioBuffer<float> buffer (2, 64);
+    juce::MidiBuffer midi;
+    controller.auditionHit (0, slot, 100);
+    controller.previewWave (loaded.waveId, 0, 200);
+    processor.processBlock (buffer, midi);
+    DrumHitsEditorTestAccess::update (editor);
+    REQUIRE (label.isVisible());
+    REQUIRE (label.getText() == "2/" + juce::String (drumhits::maxPolyphony));
+
+    controller.sendAllNotesOff();
+    processor.processBlock (buffer, midi);
+    DrumHitsEditorTestAccess::update (editor);
+    REQUIRE (label.getText() == "2/" + juce::String (drumhits::maxPolyphony));
+    processor.processBlock (buffer, midi);
+    DrumHitsEditorTestAccess::update (editor);
+    REQUIRE_FALSE (label.isVisible());
+    REQUIRE (label.getText().isEmpty());
+
+    midi.addEvent (juce::MidiMessage::noteOn (1, 36, static_cast<juce::uint8> (127)), 0);
+    processor.processBlock (buffer, midi);
+    DrumHitsEditorTestAccess::update (editor);
+    REQUIRE (label.getText() == "1/" + juce::String (drumhits::maxPolyphony));
+    for (int i = 0; i < 3; ++i)
+        processor.processBlock (buffer, midi);
+    DrumHitsEditorTestAccess::update (editor);
+    REQUIRE_FALSE (label.isVisible());
+    REQUIRE (dir.deleteRecursively());
 }
 
 TEST_CASE ("Processor exposes four independent stereo output buses")

@@ -45,11 +45,8 @@ void SettingsTab::refresh()
 
 juce::File SettingsTab::defaultPatchDirectory() const
 {
-    if (lastPatchDirectory.isDirectory())
-        return lastPatchDirectory;
-
     // The DAW project directory is not available to the plugin yet.
-    return juce::File::getSpecialLocation (juce::File::userDocumentsDirectory);
+    return Preferences::getLastDirectory();
 }
 
 void SettingsTab::showMessage (const juce::String& title, const juce::String& text)
@@ -69,7 +66,7 @@ void SettingsTab::chooseAndLoadPatch()
                               if (file == juce::File())
                                   return;
 
-                              lastPatchDirectory = file.getParentDirectory();
+                              Preferences::setLastDirectory (file);
                               const auto result = controller.loadPatch (file);
                               if (result.failed())
                               {
@@ -99,7 +96,7 @@ void SettingsTab::chooseAndSavePatch()
                               if (! file.hasFileExtension ("dhpatch"))
                                   file = file.withFileExtension ("dhpatch");
 
-                              lastPatchDirectory = file.getParentDirectory();
+                              Preferences::setLastDirectory (file);
                               SavePatchOptions options;
                               options.purgeUnused = purgeUnusedToggle.getToggleState();
                               options.consolidate = consolidateToggle.getToggleState();

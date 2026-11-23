@@ -18,7 +18,7 @@ struct NoteEvent
     bool isNoteOn = true; // note-off is currently ignored
 };
 
-// Real-time engine. Everything except pushMessage() and the lastNote accessors
+// Real-time engine. Everything except pushMessage() and the atomic status accessors
 // must be called from the audio thread. It never allocates after construction.
 class Engine
 {
@@ -39,7 +39,8 @@ public:
     void process (float* const* channels, int numChannels, int numSamples,
                   const NoteEvent* events = nullptr, int numEvents = 0);
 
-    int activeVoiceCount() const noexcept;
+    // Number of active cursors at the end of the last processed block, including previews and fades.
+    int activeVoiceCount() const noexcept { return activeVoiceCountValue.load (std::memory_order_relaxed); }
     void seedRandom (uint32_t seed) noexcept { rngState = seed != 0 ? seed : 1u; }
 
     // Last note-on received (for MIDI learn); polled by the UI thread.
@@ -118,6 +119,7 @@ private:
     uint32_t rngState = 0x9e3779b9u;
 
     std::atomic<int> lastNoteValue { -1 };
+    std::atomic<int> activeVoiceCountValue { 0 };
     std::atomic<uint32_t> noteCount { 0 };
     // this is a bitmap of 128 received notes (1 bit per note)
     std::array<std::atomic<uint64_t>, 2> receivedNotes {};

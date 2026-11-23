@@ -40,6 +40,13 @@ public:
     // Stores the list if valid. On success the canonical list is returned in 'stored' (optional).
     juce::Result setDefaultDrumNotes (const juce::String& text, juce::String* stored = nullptr);
 
+    // The last directory used in any file chooser. Kept in its own file and re-read on every call so
+    // that all plugin instances (and processes) see the most recent choice. Falls back to the
+    // user's documents directory when unset or no longer existing.
+    static juce::File getLastDirectory();
+    // Accepts a file or a directory; for a file its parent is stored.
+    static void setLastDirectory (const juce::File& fileOrDirectory);
+
 private:
     juce::PropertiesFile file;
 };
