@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 
+#include "core/Limits.h"
 #include "ui/MainTab.h"
 #include "ui/SettingsTab.h"
 #include "ui/WavesTab.h"
@@ -17,7 +18,7 @@ enum TabIndex
 } // namespace
 
 DrumHitsEditor::DrumHitsEditor (DrumHitsProcessor& p)
-    : AudioProcessorEditor (&p)
+    : AudioProcessorEditor (&p), controller (p.getController())
 {
     const auto background = getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId);
 
@@ -71,6 +72,10 @@ DrumHitsEditor::DrumHitsEditor (DrumHitsProcessor& p)
     panicButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffb02a2a));
     panicButton.onClick = [&p] { p.getController().sendAllNotesOff(); };
     addAndMakeVisible (panicButton); // after tabs so it sits on top of the tab bar
+    activeCursorsLabel.setJustificationType (juce::Justification::centredRight);
+    addChildComponent (activeCursorsLabel);
+    timerCallback();
+    startTimerHz (30);
 
     setResizable (true, true);
     setResizeLimits (700, 500, 2000, 1400);
@@ -128,4 +133,13 @@ void DrumHitsEditor::resized()
 {
     tabs.setBounds (getLocalBounds());
     panicButton.setBounds (getWidth() - 80 - 6, 4, 80, tabs.getTabBarDepth() - 8);
+    activeCursorsLabel.setBounds (panicButton.getX() - 96, 4, 90, tabs.getTabBarDepth() - 8);
+}
+
+void DrumHitsEditor::timerCallback()
+{
+    const int count = controller.getActiveVoiceCount();
+    activeCursorsLabel.setText (count > 0 ? juce::String (count) + "/" + juce::String (drumhits::maxPolyphony) : juce::String(),
+                                juce::dontSendNotification);
+    activeCursorsLabel.setVisible (count > 0);
 }

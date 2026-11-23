@@ -1,5 +1,7 @@
 #include "ui/WavesTab.h"
 
+#include "core/preferences/Preferences.h"
+
 #include <algorithm>
 #include <functional>
 #include <map>
@@ -520,13 +522,18 @@ void WavesTab::paintCell (juce::Graphics& g, int row, int column, int width, int
 
 void WavesTab::chooseFilesToLoad()
 {
-    chooser = std::make_unique<juce::FileChooser> ("Load wave files", juce::File(), "*.wav");
+    chooser = std::make_unique<juce::FileChooser> ("Load wave files", Preferences::getLastDirectory(), "*.wav");
     chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles
                               | juce::FileBrowserComponent::canSelectMultipleItems,
                           [safe = juce::Component::SafePointer<WavesTab> (this)] (const juce::FileChooser& fc)
                           {
                               if (safe != nullptr)
-                                  safe->loadFiles (fc.getResults());
+                              {
+                                  const auto results = fc.getResults();
+                                  if (! results.isEmpty())
+                                      Preferences::setLastDirectory (results.getFirst());
+                                  safe->loadFiles (results);
+                              }
                           });
 }
 
@@ -651,7 +658,7 @@ void WavesTab::chooseFileToReplace()
 void WavesTab::chooseNewFileForWave (int waveId)
 {
     chooser = std::make_unique<juce::FileChooser> ("Choose new wave file",
-                                                   controller.getWaveFile (waveId).getParentDirectory(), "*.wav");
+                                                   Preferences::getLastDirectory(), "*.wav");
     chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
                           [safe = juce::Component::SafePointer<WavesTab> (this), waveId] (const juce::FileChooser& fc)
                           {
@@ -686,8 +693,7 @@ void WavesTab::searchMissing()
 void WavesTab::chooseSearchDirectory()
 {
     chooser = std::make_unique<juce::FileChooser> ("Select directory to search for missing WAV files",
-                                                   juce::File::getSpecialLocation (juce::File::userDocumentsDirectory),
-                                                   "*");
+                                                   Preferences::getLastDirectory(), "*");
     chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
                           [safe = juce::Component::SafePointer<WavesTab> (this)] (const juce::FileChooser& fc)
                           {
@@ -696,7 +702,10 @@ void WavesTab::chooseSearchDirectory()
 
                               const auto directory = fc.getResult();
                               if (directory != juce::File())
+                              {
+                                  Preferences::setLastDirectory (directory);
                                   safe->searchMissingInDirectory (directory);
+                              }
                           });
 }
 
@@ -712,7 +721,7 @@ void WavesTab::searchMissingInDirectory (const juce::File& directory)
     for (const int waveId : controller.getWaveIds())
         if (controller.isWaveMissing (waveId))
             targets.push_back ({ waveId, controller.getWaveName (waveId),
-                                 controller.getWaveFile (waveId).getFileName(), {} });
+                                 controller.getWaveFileName (waveId), {} });
 
     if (targets.empty())
         return;

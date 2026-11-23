@@ -2,6 +2,8 @@
 
 #include "ui/Tooltips.h"
 
+#include "core/preferences/Preferences.h"
+
 #include <algorithm>
 
 namespace drumhits::ui
@@ -226,13 +228,17 @@ void HitListPanel::addWave (int waveId)
 
 void HitListPanel::chooseFilesToAdd()
 {
-    chooser = std::make_unique<juce::FileChooser> ("Add wave files", juce::File(), "*.wav");
+    chooser = std::make_unique<juce::FileChooser> ("Add wave files", Preferences::getLastDirectory(), "*.wav");
     chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles
                               | juce::FileBrowserComponent::canSelectMultipleItems,
                           [safe = juce::Component::SafePointer<HitListPanel> (this)] (const juce::FileChooser& fc)
                           {
-                              if (safe != nullptr)
-                                  safe->addFiles (fc.getResults());
+                              if (safe == nullptr)
+                                  return;
+                              const auto results = fc.getResults();
+                              if (! results.isEmpty())
+                                  Preferences::setLastDirectory (results.getFirst());
+                              safe->addFiles (results);
                           });
 }
 
@@ -368,6 +374,7 @@ void HitListPanel::showOtherMenu (bool useMousePosition)
     menu.addItem (menuMoveUp, "Move up", any && ! atTop);
     menu.addItem (menuMoveDown, "Move down", any && ! atBottom);
     menu.addItem (menuVelocitySplit, "Vel split", controller.getHitCount (drum) > 1);
+    menu.addItem (menuVelocityReset, "Velocity reset", controller.getHitCount (drum) > 0);
 
     auto options = juce::PopupMenu::Options().withTargetComponent (otherButton);
     if (useMousePosition)
@@ -461,8 +468,9 @@ void HitListPanel::runOtherAction (int action, const std::vector<int>& slots, co
             break;
 
         case menuVelocitySplit:
-            controller.splitVelocityRange (drum);
-            break;
+        case menuVelocityReset:
+            confirmVelocityAction (action == menuVelocitySplit);
+            return;
 
         default:
             return;
@@ -471,5 +479,36 @@ void HitListPanel::runOtherAction (int action, const std::vector<int>& slots, co
     notifyHitsChanged();
     if (onSelectionChanged)
         onSelectionChanged();
+}
+
+void HitListPanel::confirmVelocityAction (bool split)
+{
+    const int targetDrum = drum;
+    const auto message = split
+        ? "Divide velocities 0-127 evenly across all hits in drum " + juce::String (targetDrum + 1)
+              + ", not just the selected hits. The top hit gets the highest velocity range, and the bottom hit gets the lowest. Existing ranges will be replaced."
+        : "Reset the velocity range of every hit in drum " + juce::String (targetDrum + 1)
+              + " to 0-127, not just the selected hits. Existing ranges will be replaced.";
+    juce::AlertWindow::showAsync (
+        juce::MessageBoxOptions()
+            .withIconType (juce::MessageBoxIconType::WarningIcon)
+            .withTitle (split ? "Split velocities?" : "Reset velocities?")
+            .withMessage (message)
+            .withButton (split ? "Split" : "Reset")
+            .withButton ("Cancel"),
+        [safe = juce::Component::SafePointer<HitListPanel> (this), targetDrum, split] (int result)
+        {
+            if (safe == nullptr || result != 1)
+                return;
+
+            if (split)
+                safe->controller.splitVelocityRange (targetDrum);
+            else
+                safe->controller.resetVelocityRange (targetDrum);
+
+            safe->notifyHitsChanged();
+            if (safe->onSelectionChanged)
+                safe->onSelectionChanged();
+        });
 }
 } // namespace drumhits::ui

@@ -14,6 +14,12 @@ namespace drumhits
 {
 namespace
 {
+juce::String portableFileName (const juce::File& file)
+{
+    return file.getFullPathName().fromLastOccurrenceOf ("\\", false, false)
+               .fromLastOccurrenceOf ("/", false, false);
+}
+
 // Reads a WAV file into stereo float data at the target sample rate.
 bool readWaveFile (const juce::File& file, double targetRate,
                    std::vector<float>& left, std::vector<float>& right, juce::String& error)
@@ -305,7 +311,13 @@ bool Controller::hasWave (int waveId) const
 
 juce::String Controller::waveDisplayName (const WaveEntry& entry) const
 {
-    return entry.name.isNotEmpty() ? entry.name : (entry.files.empty() ? juce::String() : entry.files.front().getFileName());
+    return entry.name.isNotEmpty() ? entry.name : (entry.files.empty() ? juce::String() : portableFileName (entry.files.front()));
+}
+
+juce::String Controller::getWaveFileName (int waveId) const
+{
+    const auto f = getWaveFile (waveId);
+    return f == juce::File() ? juce::String() : portableFileName (f);
 }
 
 juce::String Controller::getWaveName (int waveId) const
@@ -692,6 +704,17 @@ void Controller::splitVelocityRange (int drum)
     }
 }
 
+void Controller::resetVelocityRange (int drum)
+{
+    for (const int slot : getHitSlots (drum))
+    {
+        auto props = *getHitProperties (drum, slot);
+        props.velocityMin = 0;
+        props.velocityMax = 127;
+        setHitProperties (drum, slot, props);
+    }
+}
+
 int Controller::getHitCount (int drum) const
 {
     return validDrum (drum) ? static_cast<int> (drums[static_cast<size_t> (drum)].order.size()) : 0;
@@ -936,7 +959,7 @@ juce::Result Controller::loadState (const void* data, size_t size, const juce::F
 
         if (fallbackDirectory != juce::File() && ! candidates.empty())
         {
-            const auto inFallback = fallbackDirectory.getChildFile (candidates.front().getFileName());
+            const auto inFallback = fallbackDirectory.getChildFile (portableFileName (candidates.front()));
             if (inFallback.existsAsFile()
                 && std::find (candidates.begin(), candidates.end(), inFallback) == candidates.end())
                 candidates.push_back (inFallback);

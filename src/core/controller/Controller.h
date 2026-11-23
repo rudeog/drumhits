@@ -76,6 +76,9 @@ public:
     // The primary (first) path of the wave.
     juce::File getWaveFile (int waveId) const;
 
+    // Filename of the primary path; handles foreign-platform separators (e.g. Windows paths on macOS).
+    juce::String getWaveFileName (int waveId) const;
+
     // All known paths of the wave, primary first. The others are fallbacks.
     std::vector<juce::File> getWaveFiles (int waveId) const;
     int64_t getWaveLength (int waveId) const;
@@ -146,6 +149,9 @@ public:
     // the highest band and the last gets the lowest.
     void splitVelocityRange (int drum);
 
+    // Restores the full velocity range on every hit in the drum.
+    void resetVelocityRange (int drum);
+
     // Slots of the drum's hits in display order (the order they were added).
     std::vector<int> getHitSlots (int drum) const;
     std::optional<HitProperties> getHitProperties (int drum, int hitSlot) const;
@@ -192,6 +198,7 @@ public:
     int getLastNote() const noexcept { return engine.lastNote(); }
     uint32_t getNoteCounter() const noexcept { return engine.noteCounter(); }
     std::array<uint64_t, 2> takeReceivedNotes() noexcept { return engine.takeReceivedNotes(); }
+    int getActiveVoiceCount() const noexcept { return engine.activeVoiceCount(); }
 
     // Plays a portion of a wave (positions in samples, fades measured from start and from end).
     // May be dropped if the queue is full.

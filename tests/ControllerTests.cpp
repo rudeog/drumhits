@@ -644,6 +644,39 @@ TEST_CASE ("Velocity split gives the first hit the highest band")
     REQUIRE (range (c) == std::make_pair (0, 41));
 }
 
+TEST_CASE ("Velocity reset restores every hit in one drum without changing other properties")
+{
+    Fixture f;
+    const int wave = f.loadId (writeWav (f.dir, "a.wav", 1, 48000.0, 100, 0.5f));
+    const int a = f.controller.addHit (0, wave);
+    const int b = f.controller.addHit (0, wave);
+    const int other = f.controller.addHit (1, wave);
+
+    for (const auto [drum, slot] : { std::pair { 0, a }, std::pair { 0, b }, std::pair { 1, other } })
+    {
+        auto props = *f.controller.getHitProperties (drum, slot);
+        props.velocityMin = 20;
+        props.velocityMax = 80;
+        props.volumeDb = -6.0f;
+        REQUIRE (f.controller.setHitProperties (drum, slot, props));
+    }
+
+    f.controller.resetVelocityRange (0);
+    for (const int slot : { a, b })
+    {
+        const auto props = *f.controller.getHitProperties (0, slot);
+        REQUIRE (props.velocityMin == 0);
+        REQUIRE (props.velocityMax == 127);
+        REQUIRE (props.volumeDb == Approx (-6.0f));
+    }
+    const auto untouched = *f.controller.getHitProperties (1, other);
+    REQUIRE (untouched.velocityMin == 20);
+    REQUIRE (untouched.velocityMax == 80);
+
+    f.controller.resetVelocityRange (-1);
+    f.controller.resetVelocityRange (2);
+}
+
 TEST_CASE ("Patch files resolve relative and fallback paths in order")
 {
     Fixture f;

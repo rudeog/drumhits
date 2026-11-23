@@ -67,14 +67,6 @@ void Engine::prepare (double newSampleRate)
     killStep = static_cast<float> (1.0 / std::max (1.0, sampleRate * fastFadeSeconds));
 }
 
-int Engine::activeVoiceCount() const noexcept
-{
-    int n = 0;
-    for (const auto& c : cursors)
-        n += c.active ? 1 : 0;
-    return n;
-}
-
 uint32_t Engine::nextRandom() noexcept
 {
     rngState ^= rngState << 13;
@@ -444,5 +436,10 @@ void Engine::process (float* const* channels, int numChannels, int numSamples,
         renderSegment (channels, numChannels, pos, next - pos);
         pos = next;
     }
+
+    int activeCount = 0;
+    for (const auto& cursor : cursors)
+        activeCount += cursor.active ? 1 : 0;
+    activeVoiceCountValue.store (activeCount, std::memory_order_relaxed);
 }
 } // namespace drumhits

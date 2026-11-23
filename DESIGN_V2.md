@@ -307,7 +307,7 @@ This action removes unused waves
 
 ## 4. User Interface
 
-The UI uses JUCE and sits above the controller. It has three tabs: Main, Waves and Settings. A **Panic** button sits at the top right of the whole interface, in the tab bar area and visible on every tab. It sends the all-notes-off message (2.3), which stops all playing cursors.
+The UI uses JUCE and sits above the controller. It has three tabs: Main, Waves and Settings. A **Panic** button sits at the top right of the whole interface, in the tab bar area and visible on every tab. It sends the all-notes-off message (2.3), which stops all playing cursors. To its left, the number of active cursors and the global maximum are shown as `active/maximum` while nonzero, including hit auditions, wave previews and cursors fading out.
 
 ### 4.1 Main tab
 
@@ -338,7 +338,8 @@ The UI uses JUCE and sits above the controller. It has three tabs: Main, Waves a
     - **Normalize**: sets the hit volume so the portion of the wave between the hit's start and end peaks at 0 dB (limited to the volume range of −60 to +12 dB). Only the peak is used, and velocity, pan and fades are ignored. Each selected hit is normalized individually.
     - **Duplicate**: copies each selected hit in the same drum and appends the copy to the list. The copy's name gets " (n)" appended, where n is one more than the highest number used by a hit of this drum with the same base name (an unnumbered name counts as 1, and an existing " (n)" suffix is replaced rather than stacked). For example "Snare" becomes "Snare (2)", then "Snare (3)". Disabled when the drum already has 16 hits.
     - **Move up** / **Move down**: moves the selected hits one place towards the start or end of the list, keeping their relative order and the selection. Disabled when the selection already fills the top or bottom of the list. Only the display order changes, and the engine slots are unaffected.
-    - **Vel split**: divides the velocity range 0–127 evenly between all the hits of the drum (not only the selected ones). The first hit in the list gets the highest band and the last gets the lowest, so for three hits the bands are 85–127, 42–84 and 0–41. Disabled with fewer than two hits.
+    - **Vel split**: after confirmation, divides the velocity range 0–127 evenly between all the hits of the drum (not only the selected ones). The first hit in the list gets the highest band and the last gets the lowest, so for three hits the bands are 85–127, 42–84 and 0–41. Disabled with fewer than two hits.
+    - **Velocity reset**: after confirmation, restores the full velocity range 0–127 on every hit in the drum, not only the selected hits. Disabled when the drum has no hits.
     - **Jump to wave**: switches to the Wave Pool tab, selects the hit's wave in the list, and selects the portion of the wave between the hit's start and end in the wave view. Enabled when exactly one hit is selected.
 - Wave files can be dropped on a drum to add hits. Hits can be dragged onto another drum to copy them.
 

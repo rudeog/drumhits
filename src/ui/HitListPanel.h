@@ -53,12 +53,14 @@ private:
         menuMoveUp,
         menuMoveDown,
         menuVelocitySplit,
+        menuVelocityReset,
         menuDelete,
         menuCopyToBase = 2000
     };
 
     void showOtherMenu (bool useMousePosition = false);
     void runOtherAction (int action, const std::vector<int>& slots, const std::vector<int>& availableWaves);
+    void confirmVelocityAction (bool split);
     void selectSlots (const std::vector<int>& slots);
     std::vector<int> getSelectedSlots() const;
     void notifyHitsChanged();
