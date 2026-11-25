@@ -8,6 +8,6 @@ namespace drumhits::ui
 // Middle C (note 60) is C4, so note 36 is C2.
 inline juce::String noteName (int note)
 {
-    return note < 0 ? juce::String ("none") : juce::MidiMessage::getMidiNoteName (note, true, true, 4);
+    return note < 0 ? juce::String ("none") : juce::MidiMessage::getMidiNoteName (note, true, true, 3); // Reaper convention: middle C (60) is C3
 }
 } // namespace drumhits::ui

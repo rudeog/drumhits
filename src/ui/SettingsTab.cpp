@@ -31,6 +31,14 @@ SettingsTab::SettingsTab (Controller& controllerToUse, Preferences& preferencesT
     consolidateInfo.setColour (juce::Label::textColourId, juce::Colours::grey);
     addAndMakeVisible (consolidateInfo);
 
+#ifdef DRUMHITS_BUILD_HASH
+    buildInfo.setText ("Build " DRUMHITS_BUILD_HASH, juce::dontSendNotification);
+#endif
+    buildInfo.setFont (juce::FontOptions (12.0f));
+    buildInfo.setJustificationType (juce::Justification::bottomRight);
+    buildInfo.setColour (juce::Label::textColourId, juce::Colours::grey);
+    addAndMakeVisible (buildInfo);
+
     refresh();
 }
 
@@ -132,6 +140,7 @@ void SettingsTab::commitDefaultNotes()
 void SettingsTab::resized()
 {
     auto area = getLocalBounds().reduced (16);
+    buildInfo.setBounds (area.removeFromBottom (18));
     const int rowHeight = 26, labelWidth = 160, gap = 8;
 
     loadPatchButton.setBounds (area.removeFromTop (rowHeight).removeFromLeft (120));

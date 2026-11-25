@@ -83,6 +83,23 @@ target_compile_definitions(DrumHits PUBLIC
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0)
 
+# Short hash of the latest commit, shown in the settings tab. Re-evaluated when HEAD moves.
+set(DRUMHITS_BUILD_HASH "unknown")
+find_package(Git QUIET)
+if(Git_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+    execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --short=7 HEAD
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE DRUMHITS_BUILD_HASH OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    execute_process(COMMAND "${GIT_EXECUTABLE}" diff --quiet HEAD
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" RESULT_VARIABLE drumhits_dirty ERROR_QUIET)
+    if(drumhits_dirty)
+        string(APPEND DRUMHITS_BUILD_HASH "-dirty")
+    endif()
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        "${CMAKE_SOURCE_DIR}/.git/HEAD" "${CMAKE_SOURCE_DIR}/.git/index")
+endif()
+target_compile_definitions(DrumHits PRIVATE DRUMHITS_BUILD_HASH="${DRUMHITS_BUILD_HASH}")
+
 target_link_libraries(DrumHits
     PRIVATE
         drumhits_core

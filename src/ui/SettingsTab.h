@@ -43,6 +43,8 @@ private:
     juce::Label defaultNotes;
     juce::Label defaultNotesInfo;
 
+    juce::Label buildInfo;
+
     bool updating = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SettingsTab)

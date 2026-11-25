@@ -82,7 +82,7 @@ int Preferences::parseNoteName (const juce::String& name)
         || octaveText.substring (1).contains ("-") || octaveText == "-")
         return -1;
 
-    const int note = (octaveText.getIntValue() + 1) * 12 + semitone;
+    const int note = (octaveText.getIntValue() + 2) * 12 + semitone;
     return note >= 0 && note <= 127 ? note : -1;
 }
 
@@ -113,7 +113,7 @@ DrumNoteList Preferences::parseDrumNotes (const juce::String& text)
 
     juce::StringArray names;
     for (const int n : list.notes)
-        names.add (juce::MidiMessage::getMidiNoteName (n, true, true, 4));
+        names.add (juce::MidiMessage::getMidiNoteName (n, true, true, 3));
     list.text = names.joinIntoString (",");
     return list;
 }
