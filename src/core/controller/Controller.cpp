@@ -1114,7 +1114,23 @@ juce::Result Controller::savePatch (const juce::File& patchFile, const SavePatch
         }
     }
 
-    const auto data = serialise (ids, options.consolidate ? &overrides : nullptr);
+    else
+    {
+        // Files under the patch directory are also stored relative to it, listed first so the patch
+        // stays loadable when moved between machines (e.g. macOS <-> Windows).
+        for (const int id : ids)
+        {
+            juce::StringArray paths;
+            for (const auto& f : findWave (id)->files)
+                if (f.isAChildOf (patchDir))
+                    paths.addIfNotAlreadyThere (f.getRelativePathFrom (patchDir));
+            for (const auto& f : findWave (id)->files)
+                paths.add (f.getFullPathName());
+            overrides[id] = paths;
+        }
+    }
+
+    const auto data = serialise (ids, &overrides);
     if (! patchFile.replaceWithData (data.getData(), data.getSize()))
         return juce::Result::fail ("Could not write " + patchFile.getFullPathName());
 

@@ -7,25 +7,25 @@ using namespace drumhits;
 
 TEST_CASE ("Note names are parsed")
 {
-    CHECK (Preferences::parseNoteName ("C2") == 36);
-    CHECK (Preferences::parseNoteName (" d2 ") == 38);
-    CHECK (Preferences::parseNoteName ("F#1") == 30);
-    CHECK (Preferences::parseNoteName ("Bb3") == 58);
-    CHECK (Preferences::parseNoteName ("C-1") == 0);
-    CHECK (Preferences::parseNoteName ("G9") == 127);
-    CHECK (Preferences::parseNoteName ("G#9") == -1);
-    CHECK (Preferences::parseNoteName ("H2") == -1);
+    CHECK (Preferences::parseNoteName ("C1") == 36);
+    CHECK (Preferences::parseNoteName (" d1 ") == 38);
+    CHECK (Preferences::parseNoteName ("F#0") == 30);
+    CHECK (Preferences::parseNoteName ("Bb2") == 58);
+    CHECK (Preferences::parseNoteName ("C-2") == 0);
+    CHECK (Preferences::parseNoteName ("G8") == 127);
+    CHECK (Preferences::parseNoteName ("G#8") == -1);
+    CHECK (Preferences::parseNoteName ("H1") == -1);
     CHECK (Preferences::parseNoteName ("C") == -1);
-    CHECK (Preferences::parseNoteName ("C2x") == -1);
+    CHECK (Preferences::parseNoteName ("C1x") == -1);
     CHECK (Preferences::parseNoteName ("") == -1);
 }
 
 TEST_CASE ("Drum note lists are validated and trimmed")
 {
-    auto list = Preferences::parseDrumNotes ("d2, E2 ,f#2");
+    auto list = Preferences::parseDrumNotes ("d1, E1 ,f#1");
     REQUIRE (list.result.wasOk());
     CHECK (list.notes == std::vector<int> { 38, 40, 42 });
-    CHECK (list.text == "D2,E2,F#2");
+    CHECK (list.text == "D1,E1,F#1");
 
     CHECK (Preferences::parseDrumNotes ("D2,X9").result.failed());
     CHECK (Preferences::parseDrumNotes ("D2,,E2").result.failed());
@@ -45,9 +45,9 @@ TEST_CASE ("Preferences persist")
     {
         Preferences prefs (temp.getFile());
         CHECK (prefs.getDefaultDrumNotes().empty());
-        CHECK (prefs.setDefaultDrumNotes ("d2,e2").wasOk());
+        CHECK (prefs.setDefaultDrumNotes ("d1,e1").wasOk());
         CHECK (prefs.setDefaultDrumNotes ("nope").failed());
-        CHECK (prefs.getDefaultDrumNotesText() == "D2,E2");
+        CHECK (prefs.getDefaultDrumNotesText() == "D1,E1");
     }
     Preferences reloaded (temp.getFile());
     CHECK (reloaded.getDefaultDrumNotes() == std::vector<int> { 38, 40 });
